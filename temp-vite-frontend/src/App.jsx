@@ -1,6 +1,13 @@
+// src/App.jsx
 import React from "react";
-import Avatar from "./components/Avatar"; // We'll create this
-// import VoiceInterface from "./components/VoiceInterface"; // We'll create this
+import Avatar from "./components/Avatar.jsx";
+import { Routes, Route, useParams } from "react-router-dom";
+
+// Wrapper component to use useParams
+function AvatarWrapper() {
+  const { agentId } = useParams();
+  return <Avatar agentId={agentId} />;
+}
 
 function App() {
   return (
@@ -13,11 +20,12 @@ function App() {
         alignItems: "center",
       }}
     >
-      <Avatar />
-      {/* <VoiceInterface /> */}
+      <Routes>
+        {/* :agentId? → optional */}
+        <Route path="/:agentId?" element={<AvatarWrapper />} />
+      </Routes>
     </div>
   );
 }
 
 export default App;
-

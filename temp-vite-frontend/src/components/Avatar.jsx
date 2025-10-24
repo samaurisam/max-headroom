@@ -405,7 +405,7 @@ function ShaderEffect({ glitchIntensity }) {
 /* ==============================================================
    MAIN
    ============================================================== */
-const Avatar = () => {
+const Avatar = ({ agentId }) => {
   const canvasRef = useRef(null);
   const [targetIntensity, setTargetIntensity] = useState(0);
   const [glitchIntensity, setGlitchIntensity] = useState(0);
@@ -468,7 +468,7 @@ const Avatar = () => {
         }}
       />
 
-      <VoiceInterface onGlitchIntensity={setTargetIntensity} />
+      <VoiceInterface onGlitchIntensity={setTargetIntensity} agentId={agentId} />
     </div>
   );
 };

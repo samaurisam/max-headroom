@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Conversation } from "@elevenlabs/client";
 
-const VoiceInterface = ({ onGlitchIntensity }) => {
+const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
   // Refs
   const conversationRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -25,7 +25,7 @@ const VoiceInterface = ({ onGlitchIntensity }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null); // ADDED setError
 
-  const AGENT_ID = "agent_7801k81mnfw2e3qbwfw7cs4vhde5";
+  const AGENT_ID = agentId || "agent_7801k81mnfw2e3qbwfw7cs4vhde5";
 
   // VAD Settings
   const VAD_THRESHOLD = 28;
