@@ -10,14 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@elevenlabs/client": "^0.8.0",
+    "@elevenlabs/react": "^0.8.1",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.4.0",
     "@react-three/postprocessing": "^3.0.4",
     "@vfx-js/core": "^0.8.0",
+    "elevenlabs": "^1.59.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "socket.io-client": "^4.8.1",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "wavesurfer.js": "^7.11.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

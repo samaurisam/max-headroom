@@ -1,6 +1,6 @@
 import React from "react";
 import Avatar from "./components/Avatar"; // We'll create this
-import VoiceInterface from "./components/VoiceInterface"; // We'll create this
+// import VoiceInterface from "./components/VoiceInterface"; // We'll create this
 
 function App() {
   return (
@@ -14,9 +14,10 @@ function App() {
       }}
     >
       <Avatar />
-      <VoiceInterface />
+      {/* <VoiceInterface /> */}
     </div>
   );
 }
 
 export default App;
+
