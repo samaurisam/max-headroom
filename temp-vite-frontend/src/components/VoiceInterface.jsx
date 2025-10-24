@@ -1,6 +1,9 @@
 // src/components/VoiceInterface.jsx
 import React, { useRef, useEffect, useState } from "react";
 import { Conversation } from "@elevenlabs/client";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMicrophone, faPaperPlane, faStop, faPlay } from '@fortawesome/free-solid-svg-icons';
+
 
 const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
   // Refs
@@ -25,12 +28,64 @@ const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null); // ADDED setError
 
+  // NEW: UI toggle for the controls panel
+  const [showControls, setShowControls] = useState(true);
+
   const AGENT_ID = agentId || "agent_7801k81mnfw2e3qbwfw7cs4vhde5";
 
   // VAD Settings
   const VAD_THRESHOLD = 28;
   const VAD_HOLD_MS = 400;
   const VAD_SILENCE_MS = 900;
+
+  // === PULSING MIC INDICATOR (bottom-right) ===
+  // Now clickable to toggle controls; pulse size follows live audioLevel only.
+const MicPulse = ({ audioLevel, onToggle }) => {
+  const level = Math.min(Math.max(audioLevel / 100, 0), 1);
+  const scale = 1 + level * 2;
+
+  return (
+    <div
+      onPointerDown={onToggle}
+      role="button"
+      aria-label="Toggle controls"
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 60,
+        zIndex: 2147483647,
+        width: 120,
+        height: 120,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        touchAction: "manipulation",
+        userSelect: "none",
+        background: "transparent",
+      }}
+    >
+      <div
+        style={{
+          pointerEvents: "none",
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: "#fff",
+          transform: `scale(${scale})`,
+          transition: "transform 50ms linear",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+
+        <FontAwesomeIcon  icon={showControls ? faPlay : faMicrophone} style={{ color: "#ccc", fontSize: "16px" }} />
+      </div>
+    </div>
+  );
+};
+
 
   // === AUDIO VISUALIZER + VAD ===
   const startAudioVisualizer = (stream) => {
@@ -185,12 +240,7 @@ const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
     }
   };
 
-  // === SEND FEEDBACK ===
-  const sendFeedback = (positive) => {
-    if (conversationRef.current && canSendFeedback) {
-      conversationRef.current.sendFeedback(positive);
-    }
-  };
+
 
   // === CLEANUP ===
   useEffect(() => {
@@ -199,154 +249,116 @@ const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
 
   // === UI ===
   return (
-    <div style={{
-      position: "absolute", top: 10, left: 10, zIndex: 10,
-      background: "rgba(0,0,0,0.8)", padding: "16px", borderRadius: "12px",
-      color: "#fff", fontFamily: "sans-serif", maxWidth: "380px"
-    }}>
-      <div style={{ marginBottom: "12px" }}>
-        <strong>Status:</strong> <span style={{
-          color: status === "Connected" ? "#4ade80" : status.includes("Error") ? "#ef4444" : "#94a3b8"
-        }}>{status}</span>
-      </div>
+    <>
+      {/* Controls panel — unchanged logic; only display is toggled */}
+      <div style={{
+        position: "absolute", top: 10, left: 10, zIndex: 10,
+        background: "rgba(0,0,0,0.8)", padding: "16px", borderRadius: "12px",
+        color: "#fff", fontFamily: "sans-serif", maxWidth: "380px",
+        display: showControls ? "none" : "block"
+      }}>
+        <div style={{ marginBottom: "12px" }}>
+          <strong>Status:</strong> <span style={{
+            color: status === "Connected" ? "#4ade80" : status.includes("Error") ? "#ef4444" : "#94a3b8"
+          }}>{status}</span>
+        </div>
 
-      {error && <div style={{ color: "#ef4444", marginBottom: "12px" }}>Error: {error}</div>}
+        {error && <div style={{ color: "#ef4444", marginBottom: "12px" }}>Error: {error}</div>}
 
-      <div style={{ marginBottom: "12px" }}>
-        <strong>Mode:</strong> <span style={{
-          color: mode === "speaking" ? "#fbbf24" : mode === "listening" ? "#60a5fa" : "#94a3b8"
-        }}>
-          {mode === "speaking" ? "Agent Speaking" : mode === "listening" ? "Listening..." : mode}
-        </span>
-      </div>
-
-      {/* Mic + VAD */}
-      <div style={{ marginBottom: "12px" }}>
-        <strong>Mic:</strong>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{
-            width: "100px", height: "8px", background: "#334155", borderRadius: "4px", overflow: "hidden"
+        <div style={{ marginBottom: "12px" }}>
+          <strong>Mode:</strong> <span style={{
+            color: mode === "speaking" ? "#fbbf24" : mode === "listening" ? "#60a5fa" : "#94a3b8"
           }}>
-            <div style={{
-              width: `${Math.min(audioLevel, 100)}%`,
-              height: "100%",
-              background: audioLevel > 30 ? "#4ade80" : "#94a3b8",
-              transition: "width 0.1s"
-            }} />
-          </div>
-          <span style={{ fontSize: "12px" }}>{audioLevel.toFixed(0)}</span>
-          <span style={{
-            padding: "2px 6px", borderRadius: "4px", fontSize: "11px",
-            background: vadState === "speaking" ? "#dc2626" : "#1f2937", color: "#fff"
-          }}>
-            {vadState === "speaking" ? "Speaking" : "Silent"}
+            {mode === "speaking" ? "Agent Speaking" : mode === "listening" ? "Listening..." : mode}
           </span>
+        </div>
+
+
+        {/* Controls */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <button
+            onClick={startConversation}
+            disabled={isConnecting || isConnected}
+            style={{
+              flex: 1, padding: "8px", border: "none", borderRadius: "6px",
+              background: isConnecting ? "#64748b" : "#3b82f6", color: "#fff", cursor: "pointer"
+            }}
+          >
+            {isConnecting ? "Connecting..." : "Start"}
+          </button>
+          <button
+            onClick={endConversation}
+            disabled={!isConnected}
+            style={{
+              flex: 1, padding: "8px", border: "none", borderRadius: "6px",
+              background: "#ef4444", color: "#fff", cursor: "pointer"
+            }}
+          >
+            Stop
+          </button>
+        </div>
+
+        {/* Text Input */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <input
+            type="text"
+            value={userMessage}
+            onChange={(e) => {
+              setUserMessage(e.target.value);
+              conversationRef.current?.sendUserActivity?.();
+            }}
+            onKeyPress={(e) => e.key === "Enter" && sendUserMessage()}
+            placeholder="Type or speak..."
+            disabled={!isConnected}
+            style={{
+              flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #475569",
+              background: "#1e293b", color: "#fff"
+            }}
+          />
+          <button
+            onClick={sendUserMessage}
+            disabled={!isConnected || !userMessage.trim()}
+            style={{
+              padding: "8px 12px", border: "none", borderRadius: "6px",
+              background: "#10b981", color: "#fff", cursor: "pointer"
+            }}
+          >
+            Send
+          </button>
+        </div>
+
+       
+
+        {/* Messages */}
+        <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+          {messages.length === 0 ? (
+            <p style={{ fontSize: "14px", color: "#94a3b8", textAlign: "center" }}>Say something!</p>
+          ) : (
+            messages.map((msg, i) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: "8px", padding: "8px", borderRadius: "6px",
+                  background: msg.source === "ai" ? "#1e293b" : "#334155",
+                  textAlign: msg.source === "ai" ? "left" : "right"
+                }}
+              >
+                <strong style={{ color: msg.source === "ai" ? "#60a5fa" : "#a78bfa" }}>
+                  {msg.source === "ai" ? "Agent" : "You"}:
+                </strong>{" "}
+                {msg.message}
+                <div style={{ fontSize: "10px", color: "#64748b", marginTop: "2px" }}>
+                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Controls */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <button
-          onClick={startConversation}
-          disabled={isConnecting || isConnected}
-          style={{
-            flex: 1, padding: "8px", border: "none", borderRadius: "6px",
-            background: isConnecting ? "#64748b" : "#3b82f6", color: "#fff", cursor: "pointer"
-          }}
-        >
-          {isConnecting ? "Connecting..." : "Start"}
-        </button>
-        <button
-          onClick={endConversation}
-          disabled={!isConnected}
-          style={{
-            flex: 1, padding: "8px", border: "none", borderRadius: "6px",
-            background: "#ef4444", color: "#fff", cursor: "pointer"
-          }}
-        >
-          Stop
-        </button>
-      </div>
-
-      {/* Text Input */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <input
-          type="text"
-          value={userMessage}
-          onChange={(e) => {
-            setUserMessage(e.target.value);
-            conversationRef.current?.sendUserActivity?.();
-          }}
-          onKeyPress={(e) => e.key === "Enter" && sendUserMessage()}
-          placeholder="Type or speak..."
-          disabled={!isConnected}
-          style={{
-            flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #475569",
-            background: "#1e293b", color: "#fff"
-          }}
-        />
-        <button
-          onClick={sendUserMessage}
-          disabled={!isConnected || !userMessage.trim()}
-          style={{
-            padding: "8px 12px", border: "none", borderRadius: "6px",
-            background: "#10b981", color: "#fff", cursor: "pointer"
-          }}
-        >
-          Send
-        </button>
-      </div>
-
-      {/* Feedback */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <button
-          onClick={() => sendFeedback(true)}
-          disabled={!canSendFeedback}
-          style={{
-            flex: 1, padding: "6px", border: "none", borderRadius: "6px",
-            background: canSendFeedback ? "#10b981" : "#334155", color: "#fff"
-          }}
-        >
-          Positive
-        </button>
-        <button
-          onClick={() => sendFeedback(false)}
-          disabled={!canSendFeedback}
-          style={{
-            flex: 1, padding: "6px", border: "none", borderRadius: "6px",
-            background: canSendFeedback ? "#ef4444" : "#334155", color: "#fff"
-          }}
-        >
-          Negative
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-        {messages.length === 0 ? (
-          <p style={{ fontSize: "14px", color: "#94a3b8", textAlign: "center" }}>Say something!</p>
-        ) : (
-          messages.map((msg, i) => (
-            <div
-              key={i}
-              style={{
-                marginBottom: "8px", padding: "8px", borderRadius: "6px",
-                background: msg.source === "ai" ? "#1e293b" : "#334155",
-                textAlign: msg.source === "ai" ? "left" : "right"
-              }}
-            >
-              <strong style={{ color: msg.source === "ai" ? "#60a5fa" : "#a78bfa" }}>
-                {msg.source === "ai" ? "Agent" : "You"}:
-              </strong>{" "}
-              {msg.message}
-              <div style={{ fontSize: "10px", color: "#64748b", marginTop: "2px" }}>
-                {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+      {/* Floating mic pulse (independent, fixed at bottom-right) */}
+      <MicPulse audioLevel={audioLevel} onToggle={() => setShowControls(v => !v)} />
+    </>
   );
 };
 
