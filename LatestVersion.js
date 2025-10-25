@@ -418,8 +418,8 @@ function Model({ glitchIntensity }) {
    POST FX (only “active” when speaking for perf)
    ============================================================== */
 function ShaderEffect({ glitchIntensity }) {
-  // const speaking = glitchIntensity > 0.02;
-  // if (!speaking) return null; // skip composer entirely when idle
+  const speaking = glitchIntensity > 0.02;
+  if (!speaking) return null; // skip composer entirely when idle
 
   const g = glitchIntensity * GLITCH_CONFIG.glitchStrength;
   const c = glitchIntensity * GLITCH_CONFIG.chromaticStrength;
