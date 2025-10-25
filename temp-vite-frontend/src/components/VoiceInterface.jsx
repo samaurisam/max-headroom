@@ -86,6 +86,59 @@ const MicPulse = ({ audioLevel, onToggle }) => {
   );
 };
 
+const Captions = ({ messages }) => {
+  // Filter messages: only keep those from Agent (source === "ai"), then get the most recent one
+  const agentMessages = messages.filter(msg => msg.source === "ai");
+  const latestAgentMessage = agentMessages.length > 0 
+    ? agentMessages[agentMessages.length - 1] 
+    : null;
+
+  return (
+    <div 
+      style={{
+        position: "fixed",
+        bottom: 24,
+        left: 0,
+        zIndex: 1000,
+        width: "100%",
+        height: "auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        touchAction: "manipulation",
+        userSelect: "none",
+        background: "transparent",
+        color: "#fff",
+      }}
+    >
+      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+        {latestAgentMessage ? (
+          <div
+            style={{
+
+              borderRadius: "4px",
+              background: "#1e293b",
+              textAlign: "center",
+              padding: "20px",
+              lineHeight: "1.4",
+              fontFamily: "sans-serif",
+              width: "35vw",
+              height: "auto",
+            }}
+          >
+            
+            {latestAgentMessage.message}
+           
+          </div>
+        ) : (
+          ""
+        )}
+      </div>
+    </div>
+  );
+};
+
 
   // === AUDIO VISUALIZER + VAD ===
   const startAudioVisualizer = (stream) => {
@@ -330,7 +383,7 @@ const MicPulse = ({ audioLevel, onToggle }) => {
        
 
         {/* Messages */}
-        <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+        {/* <div style={{ maxHeight: "200px", overflowY: "auto" }}>
           {messages.length === 0 ? (
             <p style={{ fontSize: "14px", color: "#94a3b8", textAlign: "center" }}>Say something!</p>
           ) : (
@@ -353,10 +406,11 @@ const MicPulse = ({ audioLevel, onToggle }) => {
               </div>
             ))
           )}
-        </div>
+        </div> */}
       </div>
 
       {/* Floating mic pulse (independent, fixed at bottom-right) */}
+      <Captions messages={messages}  />
       <MicPulse audioLevel={audioLevel} onToggle={() => setShowControls(v => !v)} />
     </>
   );
