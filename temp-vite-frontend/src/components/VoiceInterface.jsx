@@ -114,6 +114,7 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
                 width: "45vw",
                 height: "auto",
                 fontSize: "20px",
+                overflow: "hidden",
               }}
             >
               {latestAgentMessage.message}
