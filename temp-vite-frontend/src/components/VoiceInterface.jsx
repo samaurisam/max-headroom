@@ -4,9 +4,7 @@ import { Conversation } from "@elevenlabs/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrophone, faPaperPlane, faStop, faPlay } from '@fortawesome/free-solid-svg-icons';
 
-
-const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
-  // Refs
+const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
   const conversationRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -15,7 +13,6 @@ const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
   const lastSpeechRef = useRef(0);
   const activityIntervalRef = useRef(null);
 
-  // State
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [status, setStatus] = useState("Disconnected");
@@ -26,121 +23,108 @@ const VoiceInterface = ({ onGlitchIntensity, agentId }) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [vadState, setVadState] = useState("silent");
   const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState(null); // ADDED setError
-
-  // NEW: UI toggle for the controls panel
+  const [error, setError] = useState(null);
   const [showControls, setShowControls] = useState(true);
 
   const AGENT_ID = agentId || "agent_7801k81mnfw2e3qbwfw7cs4vhde5";
-
-  // VAD Settings
   const VAD_THRESHOLD = 28;
   const VAD_HOLD_MS = 400;
   const VAD_SILENCE_MS = 900;
 
-  // === PULSING MIC INDICATOR (bottom-right) ===
-  // Now clickable to toggle controls; pulse size follows live audioLevel only.
-const MicPulse = ({ audioLevel, onToggle }) => {
-  const level = Math.min(Math.max(audioLevel / 100, 0), 1);
-  const scale = 1 + level * 2;
+  const MicPulse = ({ audioLevel, onToggle }) => {
+    const level = Math.min(Math.max(audioLevel / 100, 0), 1);
+    const scale = 1 + level * 2;
 
-  return (
-    <div
-      onPointerDown={onToggle}
-      role="button"
-      aria-label="Toggle controls"
-      style={{
-        position: "fixed",
-        bottom: 24,
-        right: 60,
-        zIndex: 2147483647,
-        width: 120,
-        height: 120,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        touchAction: "manipulation",
-        userSelect: "none",
-        background: "transparent",
-      }}
-    >
+    return (
       <div
+        onPointerDown={onToggle}
+        role="button"
+        aria-label="Toggle controls"
         style={{
-          pointerEvents: "none",
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          background: "#fff",
-          transform: `scale(${scale})`,
-          transition: "transform 50ms linear",
+          position: "fixed",
+          bottom: 24,
+          right: 60,
+          zIndex: 2147483647,
+          width: 120,
+          height: 120,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          cursor: "pointer",
+          touchAction: "manipulation",
+          userSelect: "none",
+          background: "transparent",
         }}
       >
-
-        <FontAwesomeIcon  icon={showControls ? faPlay : faMicrophone} style={{ color: "#ccc", fontSize: "16px" }} />
+        <div
+          style={{
+            pointerEvents: "none",
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            background: "#fff",
+            transform: `scale(${scale})`,
+            transition: "transform 50ms linear",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <FontAwesomeIcon icon={showControls ? faPlay : faMicrophone} style={{ color: "#ccc", fontSize: "16px" }} />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-const Captions = ({ messages }) => {
-  // Filter messages: only keep those from Agent (source === "ai"), then get the most recent one
-  const agentMessages = messages.filter(msg => msg.source === "ai");
-  const latestAgentMessage = agentMessages.length > 0 
-    ? agentMessages[agentMessages.length - 1] 
-    : null;
+  const Captions = ({ messages }) => {
+    const agentMessages = messages.filter(msg => msg.source === "ai");
+    const latestAgentMessage = agentMessages.length > 0 
+      ? agentMessages[agentMessages.length - 1] 
+      : null;
 
-  return (
-    <div 
-      style={{
-        position: "fixed",
-        bottom: 24,
-        left: 0,
-        zIndex: 1000,
-        width: "100%",
-        height: "auto",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        touchAction: "manipulation",
-        userSelect: "none",
-        background: "transparent",
-        color: "#fff",
-      }}
-    >
-      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-        {latestAgentMessage ? (
-          <div
-            style={{
-
-              borderRadius: "4px",
-              background: "#1e293b",
-              textAlign: "center",
-              padding: "20px",
-              lineHeight: "1.4",
-              fontFamily: "sans-serif",
-              width: "35vw",
-              height: "auto",
-            }}
-          >
-            
-            {latestAgentMessage.message}
-           
-          </div>
-        ) : (
-          ""
-        )}
+    return (
+      <div 
+        style={{
+          position: "fixed",
+          bottom: 24,
+          left: 0,
+          zIndex: 1000,
+          width: "100%",
+          height: "auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          touchAction: "manipulation",
+          userSelect: "none",
+          background: "transparent",
+          color: "#fff",
+        }}
+      >
+        <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+          {latestAgentMessage ? (
+            <div
+              style={{
+                borderRadius: "4px",
+                background: "#1e293b",
+                textAlign: "center",
+                padding: "20px",
+                lineHeight: "1.4",
+                fontFamily: "sans-serif",
+                width: "35vw",
+                height: "auto",
+              }}
+            >
+              {latestAgentMessage.message}
+            </div>
+          ) : (
+            ""
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-
-  // === AUDIO VISUALIZER + VAD ===
   const startAudioVisualizer = (stream) => {
     streamRef.current = stream;
     const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
@@ -167,7 +151,7 @@ const Captions = ({ messages }) => {
         if (vadState !== "speaking") setVadState("speaking");
         conversationRef.current?.sendUserActivity?.();
       } else if (vadState === "speaking" && now - lastSpeechRef.current < VAD_HOLD_MS) {
-        // Hold
+        // hold
       } else if (now - lastSpeechRef.current > VAD_SILENCE_MS) {
         if (vadState !== "silent") setVadState("silent");
       }
@@ -184,18 +168,16 @@ const Captions = ({ messages }) => {
     if (activityIntervalRef.current) clearInterval(activityIntervalRef.current);
   };
 
-  // === START CONVERSATION ===
   const startConversation = async () => {
     if (isConnecting || conversationRef.current) return;
     setIsConnecting(true);
     setStatus("Connecting...");
-    setError(null); // Clear previous error
+    setError(null);
     setMessages([]);
     setAudioLevel(0);
     setVadState("silent");
 
     try {
-      // 1. High-quality mic
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 48000,
@@ -207,7 +189,6 @@ const Captions = ({ messages }) => {
         },
       });
 
-      // 2. Clone to 48kHz mono
       const audioContext = new AudioContext({ sampleRate: 48000 });
       const source = audioContext.createMediaStreamSource(stream);
       const destination = audioContext.createMediaStreamDestination();
@@ -216,7 +197,6 @@ const Captions = ({ messages }) => {
 
       startAudioVisualizer(highQualityStream);
 
-      // 3. Start session
       const conv = await Conversation.startSession({
         agentId: AGENT_ID,
         connectionType: "webrtc",
@@ -243,15 +223,15 @@ const Captions = ({ messages }) => {
         onModeChange: (m) => {
           const mode = typeof m === "object" ? m.mode : m;
           setMode(mode);
-          if (mode === "speaking") onGlitchIntensity(1);
-          else if (mode === "listening") onGlitchIntensity(0);
+          const isSpeaking = mode === "speaking";
+          onGlitchIntensity(isSpeaking ? 1 : 0);
+          if (onSpeechIntensity) onSpeechIntensity(isSpeaking ? 1 : 0);   // FIXED
         },
         onCanSendFeedbackChange: (can) => setCanSendFeedback(can),
       });
 
       conversationRef.current = conv;
 
-      // 4. Activity pings
       activityIntervalRef.current = setInterval(() => {
         if (conv && vadState === "speaking") {
           conv.sendUserActivity();
@@ -267,7 +247,6 @@ const Captions = ({ messages }) => {
     }
   };
 
-  // === END CONVERSATION ===
   const endConversation = async () => {
     if (conversationRef.current) {
       if (activityIntervalRef.current) clearInterval(activityIntervalRef.current);
@@ -281,7 +260,6 @@ const Captions = ({ messages }) => {
     stopAudioVisualizer();
   };
 
-  // === SEND TEXT ===
   const sendUserMessage = () => {
     if (conversationRef.current && userMessage.trim()) {
       conversationRef.current.sendUserMessage(userMessage);
@@ -293,17 +271,12 @@ const Captions = ({ messages }) => {
     }
   };
 
-
-
-  // === CLEANUP ===
   useEffect(() => {
     return () => endConversation();
   }, []);
 
-  // === UI ===
   return (
     <>
-      {/* Controls panel — unchanged logic; only display is toggled */}
       <div style={{
         position: "absolute", top: 10, left: 10, zIndex: 10,
         background: "rgba(0,0,0,0.8)", padding: "16px", borderRadius: "12px",
@@ -326,8 +299,6 @@ const Captions = ({ messages }) => {
           </span>
         </div>
 
-
-        {/* Controls */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
           <button
             onClick={startConversation}
@@ -351,7 +322,6 @@ const Captions = ({ messages }) => {
           </button>
         </div>
 
-        {/* Text Input */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
           <input
             type="text"
@@ -379,38 +349,9 @@ const Captions = ({ messages }) => {
             Send
           </button>
         </div>
-
-       
-
-        {/* Messages */}
-        {/* <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-          {messages.length === 0 ? (
-            <p style={{ fontSize: "14px", color: "#94a3b8", textAlign: "center" }}>Say something!</p>
-          ) : (
-            messages.map((msg, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: "8px", padding: "8px", borderRadius: "6px",
-                  background: msg.source === "ai" ? "#1e293b" : "#334155",
-                  textAlign: msg.source === "ai" ? "left" : "right"
-                }}
-              >
-                <strong style={{ color: msg.source === "ai" ? "#60a5fa" : "#a78bfa" }}>
-                  {msg.source === "ai" ? "Agent" : "You"}:
-                </strong>{" "}
-                {msg.message}
-                <div style={{ fontSize: "10px", color: "#64748b", marginTop: "2px" }}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-            ))
-          )}
-        </div> */}
       </div>
 
-      {/* Floating mic pulse (independent, fixed at bottom-right) */}
-      <Captions messages={messages}  />
+      <Captions messages={messages} />
       <MicPulse audioLevel={audioLevel} onToggle={() => setShowControls(v => !v)} />
     </>
   );
