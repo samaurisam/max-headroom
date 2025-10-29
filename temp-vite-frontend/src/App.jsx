@@ -2,6 +2,7 @@
 import React from "react";
 import Avatar from "./components/Avatar.jsx";
 import { Routes, Route, useParams } from "react-router-dom";
+import "./App.css";
 
 // Wrapper component to use useParams
 function AvatarWrapper() {

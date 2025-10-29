@@ -1,10 +1,16 @@
 // src/components/VoiceInterface.jsx
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Conversation } from "@elevenlabs/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrophone, faPaperPlane, faStop, faPlay } from '@fortawesome/free-solid-svg-icons';
 
-const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
+const VoiceInterface = ({
+  onConversationStart,
+  onShowMain,
+  onGlitchIntensity,
+  onSpeechIntensity,
+  agentId,
+}) => {
   const conversationRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -12,6 +18,7 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
   const streamRef = useRef(null);
   const lastSpeechRef = useRef(0);
   const activityIntervalRef = useRef(null);
+  const micPulseClickRef = useRef(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -24,22 +31,37 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
   const [vadState, setVadState] = useState("silent");
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
 
   const AGENT_ID = agentId || "agent_7801k81mnfw2e3qbwfw7cs4vhde5";
   const VAD_THRESHOLD = 28;
   const VAD_HOLD_MS = 400;
   const VAD_SILENCE_MS = 900;
 
-  const MicPulse = ({ audioLevel, onToggle }) => {
+  // MicPulse: Click + Spacebar support
+  const MicPulse = ({ audioLevel }) => {
     const level = Math.min(Math.max(audioLevel / 100, 0), 1);
     const scale = 1 + level * 2;
+    const isActive = isConnected || isConnecting;
+
+    const handleClick = useCallback(async () => {
+      if (isConnected || isConnecting) return;
+
+      if (onShowMain) onShowMain();
+      await new Promise(r => setTimeout(r, 150));
+      startConversation();
+    }, [isConnected, isConnecting, onShowMain]);
+
+    useEffect(() => {
+      micPulseClickRef.current = handleClick;
+    }, [handleClick]);
 
     return (
       <div
-        onPointerDown={onToggle}
+        onPointerDown={handleClick}
         role="button"
-        aria-label="Toggle controls"
+        tabIndex={0}
+        aria-label="Start conversation"
         style={{
           position: "fixed",
           bottom: 24,
@@ -50,10 +72,11 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          cursor: "pointer",
+          cursor: isActive ? "default" : "pointer",
           touchAction: "manipulation",
           userSelect: "none",
           background: "transparent",
+          outline: "none",
         }}
       >
         <div
@@ -68,60 +91,64 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            opacity: isActive ? 1 : 0.4,
           }}
         >
-          <FontAwesomeIcon icon={showControls ? faPlay : faMicrophone} style={{ color: "#ccc", fontSize: "16px" }} />
+          <FontAwesomeIcon
+            icon={isActive ? faMicrophone : faPlay}
+            style={{ color: "#ccc", fontSize: "16px" }}
+          />
         </div>
       </div>
     );
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && !e.repeat && micPulseClickRef.current) {
+        e.preventDefault();
+        micPulseClickRef.current();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const Captions = ({ messages }) => {
     const agentMessages = messages.filter(msg => msg.source === "ai");
-    const latestAgentMessage = agentMessages.length > 0 
-      ? agentMessages[agentMessages.length - 1] 
-      : null;
+    const latestAgentMessage = agentMessages.length > 0 ? agentMessages[agentMessages.length - 1] : null;
 
     return (
-      <div 
-        style={{
-          position: "fixed",
-          bottom: 24,
-          left: 0,
-          zIndex: 1000,
-          width: "100%",
-          height: "auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          touchAction: "manipulation",
-          userSelect: "none",
-          background: "transparent",
-          color: "#fff",
-        }}
-      >
+      <div style={{
+        position: "fixed",
+        bottom: 24,
+        left: 0,
+        zIndex: 1000,
+        width: "100%",
+        height: "auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
+        color: "#fff",
+      }}>
         <div style={{ maxHeight: "200px", overflowY: "auto" }}>
           {latestAgentMessage ? (
-            <div
-              style={{
-                borderRadius: "4px",
-                background: "#1e293b",
-                textAlign: "center",
-                padding: "20px",
-                lineHeight: "1.4",
-                fontFamily: "sans-serif",
-                width: "45vw",
-                height: "auto",
-                fontSize: "20px",
-                overflow: "hidden",
-              }}
-            >
+            <div style={{
+              borderRadius: "4px",
+              background: "#1e293b",
+              textAlign: "center",
+              padding: "20px",
+              lineHeight: "1.4",
+              fontFamily: "sans-serif",
+              width: "45vw",
+              height: "auto",
+              fontSize: "20px",
+              overflow: "hidden",
+            }}>
               {latestAgentMessage.message}
             </div>
-          ) : (
-            ""
-          )}
+          ) : ""}
         </div>
       </div>
     );
@@ -153,7 +180,6 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
         if (vadState !== "speaking") setVadState("speaking");
         conversationRef.current?.sendUserActivity?.();
       } else if (vadState === "speaking" && now - lastSpeechRef.current < VAD_HOLD_MS) {
-        // hold
       } else if (now - lastSpeechRef.current > VAD_SILENCE_MS) {
         if (vadState !== "silent") setVadState("silent");
       }
@@ -206,12 +232,15 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
 
         onConnect: () => {
           setIsConnected(true);
+          setIsConnecting(false);
           setStatus("Connected");
           console.log("WebRTC Connected");
         },
         onDisconnect: () => {
           setIsConnected(false);
           setStatus("Disconnected");
+          onGlitchIntensity(0);
+          if (onSpeechIntensity) onSpeechIntensity(0);
         },
         onMessage: (msg) => {
           setMessages(prev => [...prev, { ...msg, timestamp: new Date() }]);
@@ -220,19 +249,37 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
           console.error("SDK Error:", err);
           setError(err.message || "Connection failed");
           setStatus("Error");
+          setIsConnecting(false);
         },
         onStatusChange: (s) => setStatus(typeof s === "object" ? s.status : s),
         onModeChange: (m) => {
-          const mode = typeof m === "object" ? m.mode : m;
-          setMode(mode);
-          const isSpeaking = mode === "speaking";
-          onGlitchIntensity(isSpeaking ? 1 : 0);
-          if (onSpeechIntensity) onSpeechIntensity(isSpeaking ? 1 : 0);   // FIXED
+          const newMode = typeof m === "object" ? m.mode : m;
+          setMode(newMode);
+
+          const isSpeaking = newMode === "speaking";
+
+          // CRITICAL FIX: Reset intensities when NOT speaking
+          if (isSpeaking) {
+            onGlitchIntensity(1);
+            if (onSpeechIntensity) onSpeechIntensity(1);
+          } else {
+            onGlitchIntensity(0);
+            if (onSpeechIntensity) onSpeechIntensity(0);
+          }
+
+          console.log("[Voice] Mode:", newMode, "→ glitch/speech =", isSpeaking ? 1 : 0);
+        },
+        onEndOfUtterance: () => {
+          console.log("Agent finished speaking → resetting");
+          onGlitchIntensity(0);
+          if (onSpeechIntensity) onSpeechIntensity(0);
         },
         onCanSendFeedbackChange: (can) => setCanSendFeedback(can),
       });
 
       conversationRef.current = conv;
+
+      if (onConversationStart) onConversationStart();
 
       activityIntervalRef.current = setInterval(() => {
         if (conv && vadState === "speaking") {
@@ -243,9 +290,8 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
     } catch (err) {
       setError(`Mic access failed: ${err.message}`);
       setStatus("Failed");
-      console.error(err);
-    } finally {
       setIsConnecting(false);
+      console.error(err);
     }
   };
 
@@ -260,6 +306,8 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
     setStatus("Disconnected");
     setMode("unknown");
     stopAudioVisualizer();
+    onGlitchIntensity(0);
+    if (onSpeechIntensity) onSpeechIntensity(0);
   };
 
   const sendUserMessage = () => {
@@ -283,7 +331,7 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
         position: "absolute", top: 10, left: 10, zIndex: 10,
         background: "rgba(0,0,0,0.8)", padding: "16px", borderRadius: "12px",
         color: "#fff", fontFamily: "sans-serif", maxWidth: "380px",
-        display: showControls ? "none" : "block"
+        display: showControls ? "block" : "none"
       }}>
         <div style={{ marginBottom: "12px" }}>
           <strong>Status:</strong> <span style={{
@@ -351,10 +399,20 @@ const VoiceInterface = ({ onGlitchIntensity, onSpeechIntensity, agentId }) => {
             Send
           </button>
         </div>
+
+        <button
+          onClick={() => setShowControls(v => !v)}
+          style={{
+            width: "100%", padding: "6px", border: "none", borderRadius: "6px",
+            background: "#475569", color: "#fff", fontSize: "12px"
+          }}
+        >
+          {showControls ? "Hide" : "Show"} Controls
+        </button>
       </div>
 
       <Captions messages={messages} />
-      <MicPulse audioLevel={audioLevel} onToggle={() => setShowControls(v => !v)} />
+      <MicPulse audioLevel={audioLevel} />
     </>
   );
 };
