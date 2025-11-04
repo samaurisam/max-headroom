@@ -394,7 +394,7 @@ const Avatar = ({ agentId }) => {
         {/* QR CODE */}
         <div style={qrStyle}>
           <img
-            src="/assets/qrcodewhite.svg"
+            src="/assets/gatheringQR2.svg"
             alt="QR Code"
             style={{ width: "100%", height: "100%", objectFit: "contain" }}
             draggable={false}

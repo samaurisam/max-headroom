@@ -411,7 +411,7 @@ const VoiceInterface = ({
         </button>
       </div>
 
-      <Captions messages={messages} />
+      {/* <Captions messages={messages} /> */}
       <MicPulse audioLevel={audioLevel} />
     </>
   );
